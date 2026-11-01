@@ -1,0 +1,16 @@
+{
+  "name": "atlassian-admin-scripts",
+  "version": "1.0.0",
+  "description": "Small scripts for Jira, Confluence and Jira Service Management Cloud admins",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "repository": { "type": "git", "url": "git+https://github.com/kayabyte-2/atlassian-admin-scripts.git" },
+  "scripts": { "test": "node --test" },
+  "bin": {
+    "confluence-group-watch": "src/confluence-group-watch.js",
+    "jsm-group-participants": "src/jsm-group-participants.js",
+    "jira-wip-per-person": "src/jira-wip-per-person.js",
+    "jira-epic-cost": "src/jira-epic-cost.js"
+  }
+}
