@@ -96,6 +96,23 @@ Limits: children are the issues with `parent = EPIC` plus their subtasks; deeper
 Prefer not to run scripts? Burnrate does this inside Jira: https://go.kayabyte.dev/atl/burnrate?s=ot-github-jira-epic-cost
 Guide: https://kayabyte.dev/atlassian/guides/jira-project-cost-from-worklogs
 
+## jira-worklog-export
+
+Problem: you need the individual worklogs (who, when, how long) in a spreadsheet, and a Jira export only gives you totals per work item.
+
+```sh
+node src/jira-worklog-export.js --jql "project = APP" --from 2026-10-01 --to 2026-10-31 --out worklogs.csv
+```
+
+Columns: `key, summary, author, accountId, started, hours, seconds, comment`. `--from` and `--to` are inclusive days in UTC, matched on when the work was started, not when it was logged. Text that a spreadsheet would run as a formula gets a leading `'`.
+
+Permissions: Browse projects and View worklogs on the issues (time tracking must be enabled).
+
+Limits: one API call per matching issue, so a large query takes a while. Tempo users: on Cloud, Jira holds Tempo's app account as the author, so this shows that account rather than the person. The file holds names and hours, so treat it as personnel data.
+
+Want it priced, without a file? Burnrate does that inside Jira: https://go.kayabyte.dev/atl/burnrate?s=ot-github-jira-worklog-export
+Guide: https://kayabyte.dev/atlassian/guides/jira-export-worklogs
+
 ## License
 
 MIT
