@@ -5,6 +5,7 @@ import { listMembers, addWatchers, watchPath } from '../src/confluence-group-wat
 import { listGroupAccountIds, addParticipants, chunk } from '../src/jsm-group-participants.js';
 import { countPerAssignee, fetchInProgress, buildJql } from '../src/jira-wip-per-person.js';
 import { parseRates, rateFor, aggregate, toCsv, fetchWorklogs } from '../src/jira-epic-cost.js';
+import * as wl from '../src/jira-worklog-export.js';
 import { mockFetch } from './mock-fetch.js';
 
 const cfg = { site: 'x.atlassian.net', email: 'a@b.c', token: 't' };
@@ -101,4 +102,29 @@ test('worklog paging by startAt', async () => {
   });
   assert.equal((await fetchWorklogs(c, 'A-1')).length, 3);
   assert.equal(f.calls.length, 2);
+});
+
+test('worklog export: dates, JQL and bad input', () => {
+  assert.equal(wl.dayToMs('2026-10-31', 'to', true), Date.parse('2026-10-31T23:59:59.999Z'));
+  assert.throws(() => wl.dayToMs('31/10/2026', 'to'), /--to/);
+  assert.equal(wl.buildJql('project = A', '2026-10-01', '2026-10-31'), '(project = A) AND timespent > 0 AND worklogDate >= "2026-09-30" AND worklogDate <= "2026-11-01"');
+});
+test('worklog export: pages through more than one page and keeps exact days', async () => {
+  const [c] = mk((u) => {
+    if (u.pathname.endsWith('/search/jql')) return { body: { issues: [{ key: 'A-1', fields: { summary: 'S, with comma' } }] } };
+    const at = Number(u.searchParams.get('startAt'));
+    if (at === 0) return { body: { total: 3, worklogs: [
+      { started: '2026-10-31T23:30:00.000+0000', timeSpentSeconds: 3600, author: { displayName: 'Bo', accountId: 'b' }, comment: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hello' }] }] } },
+      { started: '2026-11-01T00:30:00.000+0000', timeSpentSeconds: 60, author: { displayName: 'Bo', accountId: 'b' } },
+    ] } };
+    return { body: { total: 3, worklogs: [{ started: '2026-10-01T00:00:00.000+0000', timeSpentSeconds: 5400, author: { displayName: 'Al', accountId: 'a' } }] } };
+  });
+  const rows = await wl.exportWorklogs(c, { jql: 'project = A', from: '2026-10-01', to: '2026-10-31' });
+  assert.deepEqual(rows.map((r) => [r.author, r.hours]), [['Al', 1.5], ['Bo', 1]]);
+  assert.equal(rows[1].comment, 'hello');
+});
+test('worklog export: CSV quotes text and neutralises formulas', () => {
+  const csv = wl.toCsv([{ key: 'A-1', summary: 'a "b", c', author: '=cmd()', accountId: 'x', started: 's', hours: 1, seconds: 3600, comment: '' }]);
+  assert.match(csv, /"a ""b"", c"/);
+  assert.match(csv, /,'=cmd\(\),/);
 });
